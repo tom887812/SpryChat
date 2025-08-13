@@ -1,17 +1,21 @@
-# SpryChat - AI Chat Assistant
+# SpryChat - AI聊天助手
 
 一个现代化的AI聊天助手，支持多模型、对话历史和丰富的自定义功能。
 
-## ✨ 主要功能
+[中文文档](./README_CN.md) | [English](./README.md)
+
+## ✨ 项目特色功能
 
 - 🤖 **多模型支持** - OpenAI、OpenRouter等多种AI模型
 - 💬 **对话历史管理** - 本地持久化对话记录
-- ⚙️ **客户端设置界面** - API密钥、模型、主题等完全客户端配置
-- 🌐 **多语言支持** - 中文/英文界面切换
+- ⚙️ **客户端设置界面** - API密钥、模型、主题等完全浏览器端配置
+- 🌐 **多语言支持** - 中文/英文界面无缝切换
 - 🎨 **主题切换** - 明暗主题支持
 - 📁 **文件上传支持** - 聊天中上传和处理文件
 - 🔄 **实时模型切换** - 无需刷新页面即可切换AI模型
-- 📱 **响应式设计** - 适配桌面和移动设备
+- 📱 **响应式设计** - 完美适配桌面和移动设备
+- 🔒 **隐私优先** - 所有设置仅存储在浏览器本地
+- ⚡ **即时更新** - 对话管理实时响应，无需页面重载
 
 ## 🚀 快速开始
 
@@ -95,6 +99,51 @@ SpryChat/
 └── env.example           # 环境变量示例
 ```
 
+## 🚀 部署到生产环境
+
+### 部署到Vercel（推荐）
+
+1. **推送到GitHub**：
+   ```bash
+   git add .
+   git commit -m "准备部署"
+   git push origin master
+   ```
+
+2. **在Vercel上部署**：
+   - 访问 [vercel.com](https://vercel.com)
+   - 点击"New Project"
+   - 导入你的GitHub仓库
+   - 配置环境变量：
+     - `OPENROUTE_API_KEY`
+     - `OPENROUTE_BASE_URL`
+     - `OPENROUTE_MODEL`
+   - 点击"Deploy"
+
+3. **自定义域名**（可选）：
+   - 在Vercel控制面板中添加自定义域名
+   - 配置DNS设置
+
+### 部署到Netlify
+
+1. **构建配置**：
+   ```bash
+   npm run build
+   ```
+
+2. **部署**：
+   - 访问 [netlify.com](https://netlify.com)
+   - 拖拽 `.next` 文件夹上传
+   - 或连接GitHub仓库自动部署
+
+### 部署到其他平台
+
+SpryChat兼容任何支持Next.js的平台：
+- Railway
+- Render
+- DigitalOcean App Platform
+- AWS Amplify
+
 ## 🔧 开发说明
 
 ### 本地开发
@@ -154,6 +203,10 @@ MIT License
 ## 🤝 贡献
 
 欢迎提交Issue和Pull Request来改进SpryChat！
+
+## 🌟 Star历史
+
+如果你觉得SpryChat有用，请考虑在GitHub上给它一个star！
 
 ---
 
