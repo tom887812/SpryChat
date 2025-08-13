@@ -26,6 +26,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { MarkdownText } from "./markdown-text";
 import { ToolFallback } from "./tool-fallback";
+import { FileUpload } from "@/components/file-upload";
+import { useState } from "react";
 
 export const Thread: FC = () => {
   return (
@@ -171,6 +173,8 @@ const ThreadWelcomeSuggestions: FC = () => {
 };
 
 const Composer: FC = () => {
+  const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+
   return (
     // aui-composer-wrapper
     <div className="bg-background relative mx-auto flex w-full max-w-[var(--thread-max-width)] flex-col gap-4 px-[var(--thread-padding-x)] pb-4 md:pb-6">
@@ -180,12 +184,23 @@ const Composer: FC = () => {
       </ThreadPrimitive.Empty>
       {/* aui-composer-root */}
       <ComposerPrimitive.Root className="focus-within::ring-offset-2 relative flex w-full flex-col rounded-2xl focus-within:ring-2 focus-within:ring-black dark:focus-within:ring-white">
+        {/* File attachments display */}
+        {attachedFiles.length > 0 && (
+          <div className="bg-muted/50 border-border dark:border-muted-foreground/15 border-x border-t rounded-t-2xl p-3">
+            <FileUpload 
+              onFilesChange={setAttachedFiles}
+              maxFiles={5}
+              maxFileSize={10}
+            />
+          </div>
+        )}
         {/* aui-composer-input */}
         <ComposerPrimitive.Input
           placeholder="Send a message..."
-          className={
-            "bg-muted border-border dark:border-muted-foreground/15 focus:outline-primary placeholder:text-muted-foreground max-h-[calc(50dvh)] min-h-16 w-full resize-none rounded-t-2xl border-x border-t px-4 pt-2 pb-3 text-base outline-none"
-          }
+          className={cn(
+            "bg-muted border-border dark:border-muted-foreground/15 focus:outline-primary placeholder:text-muted-foreground max-h-[calc(50dvh)] min-h-16 w-full resize-none border-x border-t px-4 pt-2 pb-3 text-base outline-none",
+            attachedFiles.length > 0 ? "rounded-none" : "rounded-t-2xl"
+          )}
           rows={1}
           autoFocus
           aria-label="Message input"
@@ -196,21 +211,22 @@ const Composer: FC = () => {
   );
 };
 
-const ComposerAction: FC = () => {
+interface ComposerActionProps {
+  onAttachFile?: () => void;
+}
+
+const ComposerAction: FC<ComposerActionProps> = ({ onAttachFile }) => {
   return (
     // aui-composer-action-wrapper
     <div className="bg-muted border-border dark:border-muted-foreground/15 relative flex items-center justify-between rounded-b-2xl border-x border-b p-2">
-      <TooltipIconButton
-        tooltip="Attach file"
-        variant="ghost"
-        // aui-composer-attachment-button
-        className="hover:bg-foreground/15 dark:hover:bg-background/50 scale-115 p-3.5"
-        onClick={() => {
-          console.log("Attachment clicked - not implemented");
+      <FileUpload 
+        onFilesChange={(files) => {
+          console.log("Files attached:", files);
+          // 这里可以处理文件上传逻辑
         }}
-      >
-        <PlusIcon />
-      </TooltipIconButton>
+        maxFiles={5}
+        maxFileSize={10}
+      />
 
       <ThreadPrimitive.If running={false}>
         <ComposerPrimitive.Send asChild>
