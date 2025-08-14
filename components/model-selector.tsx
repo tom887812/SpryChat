@@ -174,10 +174,18 @@ export function ModelSelector({ settings, updateSettings }: ModelSelectorProps) 
 
   // 当API配置改变时重新获取模型
   useEffect(() => {
-    fetchModels();
+    let active = true;
+    (async () => {
+      await fetchModels();
+      if (!active) return;
+    })();
+    return () => {
+      active = false;
+    };
   }, [settings.apiKey, settings.baseURL]);
 
   const handleModelChange = (modelId: string) => {
+    if (modelId === settings.model) return;
     updateSettings({ model: modelId });
     
     // 延迟检查设置是否真的更新了

@@ -10,6 +10,8 @@ export function useSpryChat({ settings }: { settings: Settings }) {
   const { currentConversation, isLoaded: conversationsLoaded } = useSimpleConversations();
 
   const runtime = useChatRuntime({
+    initialMessages: (currentConversation?.messages || [])
+      .filter((msg) => msg.role !== 'data') as any,
     api: "/api/chat",
     headers: {
       'X-API-Key': settings.apiKey,
@@ -18,11 +20,7 @@ export function useSpryChat({ settings }: { settings: Settings }) {
     },
   });
 
-  useEffect(() => {
-    if (currentConversation && runtime) {
-      runtime.switchToNewThread(currentConversation.id);
-    }
-  }, [currentConversation?.id, runtime]);
+
 
   return {
     runtime,

@@ -39,13 +39,34 @@ export function ConversationList() {
     deleteConversation,
     updateConversationTitle,
     clearAllConversations,
+    updateConversationMessages,
   } = useSimpleConversations();
 
   const [showClearDialog, setShowClearDialog] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
 
+  const THREAD_CACHE_PREFIX = 'sprychat-thread-cache-';
+
+  const persistCurrentThreadFromCache = () => {
+    if (!currentConversationId) return;
+    if (typeof window === 'undefined') return;
+    try {
+      const cached = localStorage.getItem(THREAD_CACHE_PREFIX + currentConversationId);
+      if (!cached) return;
+      const parsed = JSON.parse(cached);
+      if (Array.isArray(parsed)) {
+        updateConversationMessages(currentConversationId, parsed);
+      }
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('Failed to persist current thread from cache', e);
+    }
+  };
+
   const handleNewThread = () => {
+    // Save current thread before creating a new one
+    persistCurrentThreadFromCache();
     createNewConversation();
   };
 
@@ -116,7 +137,11 @@ export function ConversationList() {
                 className={`group relative flex items-center rounded-md p-2 cursor-pointer hover:bg-accent ${
                   currentConversationId === conversation.id ? 'bg-accent' : ''
                 }`}
-                onClick={() => switchToConversation(conversation.id)}
+                onClick={() => {
+                  // Save current thread before switching
+                  persistCurrentThreadFromCache();
+                  switchToConversation(conversation.id);
+                }}
               >
                 <MessageSquare className="mr-2 h-4 w-4 flex-shrink-0" />
                 
