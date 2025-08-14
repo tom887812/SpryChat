@@ -44,11 +44,15 @@ export function useSettings() {
 
   // 保存设置到localStorage
   const updateSettings = (newSettings: Partial<Settings>) => {
+    console.log('⚙️ Settings: updateSettings called with:', newSettings);
+    console.log('⚙️ Settings: Current settings before update:', settings);
     const updated = { ...settings, ...newSettings };
+    console.log('⚙️ Settings: New settings after merge:', updated);
     setSettings(updated);
     if (typeof window !== 'undefined') {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        console.log('✅ Settings: Saved to localStorage:', updated);
       } catch (error) {
         console.error("Failed to save settings:", error);
       }

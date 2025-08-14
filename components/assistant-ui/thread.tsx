@@ -6,22 +6,23 @@ import {
   BranchPickerPrimitive,
   ErrorPrimitive,
 } from "@assistant-ui/react";
-import type { FC } from "react";
+import React, { type FC } from "react";
 import {
   ArrowDownIcon,
   ArrowUpIcon,
-  PlusIcon,
-  CopyIcon,
   CheckIcon,
-  PencilIcon,
-  RefreshCwIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  CopyIcon,
+  PencilIcon,
+  RefreshCwIcon,
+  SendHorizonalIcon,
   Square,
 } from "lucide-react";
+import { motion } from "framer-motion";
+import { useI18n } from "@/hooks/use-i18n";
 
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
-import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { MarkdownText } from "./markdown-text";
@@ -94,7 +95,7 @@ const ThreadWelcome: FC = () => {
               // aui-thread-welcome-message-motion-1
               className="text-2xl font-semibold"
             >
-              Hello there!
+              嗨！我是SpryChat 🚀
             </motion.div>
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -104,7 +105,7 @@ const ThreadWelcome: FC = () => {
               // aui-thread-welcome-message-motion-2
               className="text-muted-foreground/65 text-2xl"
             >
-              How can I help you today?
+              今天想聊点什么有趣的？
             </motion.div>
           </div>
         </div>
@@ -114,31 +115,156 @@ const ThreadWelcome: FC = () => {
 };
 
 const ThreadWelcomeSuggestions: FC = () => {
+  const { language } = useI18n();
+
+  // 中文问题池
+  const chineseQuestions = [
+    {
+      title: "帮我想一个",
+      label: "有趣的周末计划",
+      action: "帮我想一个有趣的周末计划",
+    },
+    {
+      title: "写一首关于",
+      label: "编程的小诗",
+      action: "写一首关于编程的小诗",
+    },
+    {
+      title: "解释一下",
+      label: "量子计算的基本概念",
+      action: "解释一下量子计算的基本概念",
+    },
+    {
+      title: "推荐一些",
+      label: "提高工作效率的方法",
+      action: "推荐一些提高工作效率的方法",
+    },
+    {
+      title: "如果动物会编程",
+      label: "哪种动物最厉害？",
+      action: "如果动物会编程，哪种动物最厉害？",
+    },
+    {
+      title: "用表情符号",
+      label: "描述你的功能",
+      action: "用表情符号描述你的功能",
+    },
+    {
+      title: "比较React和Vue",
+      label: "的优缺点",
+      action: "比较React和Vue的优缺点",
+    },
+    {
+      title: "创建一个",
+      label: "简单的待办事项应用",
+      action: "帮我创建一个简单的待办事项应用",
+    },
+    {
+      title: "解释什么是",
+      label: "机器学习",
+      action: "解释什么是机器学习",
+    },
+    {
+      title: "设计一个",
+      label: "创意logo概念",
+      action: "帮我设计一个创意logo概念",
+    },
+    {
+      title: "分析一下",
+      label: "远程工作的利弊",
+      action: "分析一下远程工作的利弊",
+    },
+    {
+      title: "用一句话",
+      label: "总结人工智能",
+      action: "用一句话总结人工智能",
+    },
+    {
+      title: "创造一个",
+      label: "有趣的编程笑话",
+      action: "创造一个有趣的编程笑话",
+    },
+  ];
+
+  // 英文问题池
+  const englishQuestions = [
+    {
+      title: "Write a poem",
+      label: "about programming",
+      action: "Write a poem about programming",
+    },
+    {
+      title: "Suggest ways to",
+      label: "boost productivity",
+      action: "Suggest ways to boost productivity",
+    },
+    {
+      title: "Describe your abilities",
+      label: "using only emojis",
+      action: "Describe your abilities using only emojis",
+    },
+    {
+      title: "Create a simple",
+      label: "to-do app concept",
+      action: "Create a simple to-do app concept",
+    },
+    {
+      title: "Design a creative",
+      label: "logo concept",
+      action: "Design a creative logo concept",
+    },
+    {
+      title: "Recommend books",
+      label: "for tech enthusiasts",
+      action: "Recommend books for tech enthusiasts",
+    },
+    {
+      title: "Explain the future",
+      label: "of web development",
+      action: "Explain the future of web development",
+    },
+    {
+      title: "What would happen if",
+      label: "AI became creative?",
+      action: "What would happen if AI became creative?",
+    },
+    {
+      title: "Compare React",
+      label: "and Vue frameworks",
+      action: "Compare React and Vue frameworks",
+    },
+    {
+      title: "Explain quantum",
+      label: "computing basics",
+      action: "Explain quantum computing basics",
+    },
+    {
+      title: "Create a funny",
+      label: "programming joke",
+      action: "Create a funny programming joke",
+    },
+    {
+      title: "Analyze pros and cons",
+      label: "of remote work",
+      action: "Analyze pros and cons of remote work",
+    },
+  ];
+
+  // 根据语言选择问题池
+  const questionPool = language === 'zh' ? chineseQuestions : englishQuestions;
+
+  // 随机选择4个问题
+  const getRandomQuestions = () => {
+    const shuffled = [...questionPool].sort(() => 0.5 - Math.random());
+    return shuffled.slice(0, 4);
+  };
+
+  const [selectedQuestions] = React.useState(() => getRandomQuestions());
+
   return (
     // aui-thread-welcome-suggestions
     <div className="grid w-full gap-2 sm:grid-cols-2">
-      {[
-        {
-          title: "What are the advantages",
-          label: "of using Assistant Cloud?",
-          action: "What are the advantages of using Assistant Cloud?",
-        },
-        {
-          title: "Write code to",
-          label: `demonstrate topological sorting`,
-          action: `Write code to demonstrate topological sorting`,
-        },
-        {
-          title: "Help me write an essay",
-          label: `about AI chat applications`,
-          action: `Help me write an essay about AI chat applications`,
-        },
-        {
-          title: "What is the weather",
-          label: "in San Francisco?",
-          action: "What is the weather in San Francisco?",
-        },
-      ].map((suggestedAction, index) => (
+      {selectedQuestions.map((suggestedAction, index) => (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

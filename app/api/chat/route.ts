@@ -19,13 +19,21 @@ export async function POST(req: Request) {
   const finalModel = headerModel || process.env.OPENROUTE_MODEL || "gpt-4o";
 
   // 调试日志
-  console.log('API Request Debug:', {
+  console.log('🚀 API Request Debug:', {
     headerApiKey: headerApiKey ? '***configured***' : 'missing',
     headerBaseURL: headerBaseURL || 'using default',
     headerModel: headerModel || 'using default',
     finalModel,
     finalBaseURL,
     hasApiKey: !!finalApiKey
+  });
+  
+  // 额外调试：检查所有headers
+  console.log('📋 All request headers:');
+  req.headers.forEach((value, key) => {
+    if (key.startsWith('x-') || key.toLowerCase().includes('model') || key.toLowerCase().includes('api')) {
+      console.log(`  ${key}: ${value}`);
+    }
   });
 
   // 如果没有API密钥，返回错误
