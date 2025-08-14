@@ -1,16 +1,14 @@
 "use client";
 
-import { Assistant } from "./assistant";
-import { ClientOnly } from "@/components/client-only";
+import { Assistant } from "@/app/assistant";
+import { useSettings } from "@/hooks/use-settings";
 
 export default function Home() {
+  const { settings, isLoaded, updateSettings } = useSettings();
+
   return (
-    <ClientOnly fallback={
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-muted-foreground">SpryChat 加载中...</div>
-      </div>
-    }>
-      <Assistant />
-    </ClientOnly>
+    <main className="h-full w-full flex flex-col">
+      {isLoaded ? <Assistant key={settings.model} settings={settings} updateSettings={updateSettings} /> : <div>Loading...</div>}
+    </main>
   );
 }

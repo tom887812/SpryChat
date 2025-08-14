@@ -15,9 +15,15 @@ import { useSpryChat } from "@/hooks/use-chat-runtime";
 import { useSimpleConversations } from "@/hooks/use-simple-conversations";
 import { ClientOnly } from "@/components/client-only";
 import { useEffect } from "react";
+import { Settings, UpdateSettingsFunction } from "@/hooks/use-settings";
 
-export const Assistant = () => {
-  const { runtime, isLoaded, settings } = useSpryChat();
+interface AssistantProps {
+  settings: Settings;
+  updateSettings: UpdateSettingsFunction;
+}
+
+export function Assistant({ settings, updateSettings }: AssistantProps) {
+  const { runtime, isLoaded } = useSpryChat({ settings });
   const { 
     currentConversation, 
     createNewConversation, 
@@ -95,7 +101,7 @@ export const Assistant = () => {
             <div className="flex items-center gap-2 px-4">
               <SidebarTrigger className="-ml-1" />
               <Separator orientation="vertical" className="mr-2 h-4" />
-              <ModelSelector />
+              <ModelSelector settings={settings} updateSettings={updateSettings} />
             </div>
             <div className="ml-auto px-4">
               <SettingsDialog />

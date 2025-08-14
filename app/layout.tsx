@@ -4,17 +4,15 @@ import "./globals.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
-  subsets: ["latin"],
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
-  subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
-  title: "SpryChat - AI Chat Assistant",
-  description: "A lightweight AI chat tool built with Next.js and Assistant UI",
+  title: "Spry Chat",
+  description: "A chat application built with Next.js and Tailwind CSS.",
 };
 
 export default function RootLayout({
@@ -23,10 +21,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-        suppressHydrationWarning
       >
         {children}
       </body>

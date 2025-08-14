@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 
+export type UpdateSettingsFunction = (newSettings: Partial<Settings>) => void;
+
 export interface Settings {
   apiKey: string;
   baseURL: string;
@@ -24,9 +26,7 @@ export function useSettings() {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // 从localStorage加载设置 - 防止水合错误
   useEffect(() => {
-    // 确保在客户端执行
     if (typeof window === 'undefined') return;
     
     try {
@@ -42,24 +42,18 @@ export function useSettings() {
     }
   }, []);
 
-  // 保存设置到localStorage
   const updateSettings = (newSettings: Partial<Settings>) => {
-    console.log('⚙️ Settings: updateSettings called with:', newSettings);
-    console.log('⚙️ Settings: Current settings before update:', settings);
     const updated = { ...settings, ...newSettings };
-    console.log('⚙️ Settings: New settings after merge:', updated);
     setSettings(updated);
     if (typeof window !== 'undefined') {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-        console.log('✅ Settings: Saved to localStorage:', updated);
       } catch (error) {
         console.error("Failed to save settings:", error);
       }
     }
   };
 
-  // 重置设置
   const resetSettings = () => {
     setSettings(DEFAULT_SETTINGS);
     if (typeof window !== 'undefined') {
