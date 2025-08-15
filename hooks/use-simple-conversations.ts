@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, createContext, useContext, ReactNode, createElement } from "react";
+import { useState, useEffect, createContext, useContext, ReactNode, createElement, useRef, useLayoutEffect } from "react";
 
 export interface SimpleConversation {
   id: string;
@@ -34,29 +34,42 @@ function useSimpleConversationsImpl(): ConversationsValue {
   const [conversations, setConversations] = useState<SimpleConversation[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
-  const [didInitialSelect, setDidInitialSelect] = useState(false);
 
-  // 从localStorage加载对话列表 - 防止水合错误
-  useEffect(() => {
-    // 确保在客户端执行
+
+  // 从localStorage加载对话列表，并在首帧前插入一个新的会话作为当前，直接进入欢迎界面
+  useLayoutEffect(() => {
     if (typeof window === 'undefined') return;
-    
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      const currentId = localStorage.getItem(CURRENT_CONVERSATION_KEY);
-      
-      if (stored) {
-        const parsedConversations = JSON.parse(stored).map((conv: any) => ({
-          ...conv,
-          createdAt: new Date(conv.createdAt),
-          updatedAt: new Date(conv.updatedAt),
-        }));
-        setConversations(parsedConversations);
-      }
-      
-      if (currentId) {
-        setCurrentConversationId(currentId);
-      }
+      const parsedConversations = stored
+        ? JSON.parse(stored).map((conv: any) => ({
+            ...conv,
+            createdAt: new Date(conv.createdAt),
+            updatedAt: new Date(conv.updatedAt),
+          }))
+        : [];
+
+      // 生成新的会话，置于最前并设为当前
+      const id = `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const now = new Date();
+      const newConversation: SimpleConversation = {
+        id,
+        title: "新对话",
+        createdAt: now,
+        updatedAt: now,
+        messages: [],
+        model: undefined,
+      };
+
+      const updatedList = [newConversation, ...parsedConversations];
+      setConversations(updatedList);
+      setCurrentConversationId(id);
+
+      // 同步存储，避免下一次加载时出现旧的 currentId
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedList));
+        localStorage.setItem(CURRENT_CONVERSATION_KEY, id);
+      } catch {}
     } catch (error) {
       console.error("Failed to load conversations:", error);
     } finally {
@@ -64,22 +77,32 @@ function useSimpleConversationsImpl(): ConversationsValue {
     }
   }, []);
 
-  // 当已加载后仅在第一次初始化且没有当前会话但存在历史时，默认选中最新的一条
+  // 初次加载已在上面的 useLayoutEffect 中处理新会话创建，无需额外逻辑
+
+  // 启动时清理空对话（无消息且无缓存），以及在关闭页面时清理，避免产生空记录
   useEffect(() => {
     if (!isLoaded) return;
-    if (didInitialSelect) return;
-    if (!currentConversationId && conversations.length > 0) {
-      const nextId = conversations[0].id;
-      setCurrentConversationId(nextId);
-      if (typeof window !== 'undefined') {
-        try {
-          localStorage.setItem(CURRENT_CONVERSATION_KEY, nextId);
-        } catch {}
-      }
-    }
-    // 标记只执行一次，避免与新建/切换时产生竞态
-    setDidInitialSelect(true);
-  }, [isLoaded, didInitialSelect, currentConversationId, conversations]);
+    const prune = () => {
+      setConversations(prev => {
+        const filtered = prev.filter(c => {
+          if (c.id === currentConversationId) return true; // 保留当前会话
+          const hasMsgs = Array.isArray(c.messages) && c.messages.length > 0;
+          const hasCache = hasCachedMessages(c.id);
+          return hasMsgs || hasCache;
+        });
+        if (filtered.length !== prev.length) {
+          saveConversations(filtered);
+        }
+        return filtered;
+      });
+    };
+    // 立即清理一次
+    prune();
+    // 关闭/刷新时清理
+    const handler = () => prune();
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isLoaded, currentConversationId]);
 
   // 保存对话到localStorage - 防止水合错误
   const saveConversations = (convs: SimpleConversation[]) => {
@@ -90,6 +113,19 @@ function useSimpleConversationsImpl(): ConversationsValue {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(convs));
     } catch (error) {
       console.error("Failed to save conversations:", error);
+    }
+  };
+
+  const hasCachedMessages = (conversationId?: string | null) => {
+    if (!conversationId) return false;
+    if (typeof window === 'undefined') return false;
+    try {
+      const cached = localStorage.getItem(THREAD_CACHE_PREFIX + conversationId);
+      if (!cached) return false;
+      const parsed = JSON.parse(cached);
+      return Array.isArray(parsed) && parsed.length > 0;
+    } catch {
+      return false;
     }
   };
 
@@ -173,7 +209,6 @@ function useSimpleConversationsImpl(): ConversationsValue {
     });
 
     setCurrentConversationId(newConversation.id);
-    setDidInitialSelect(true);
     try {
       localStorage.setItem(CURRENT_CONVERSATION_KEY, newConversation.id);
     } catch (error) {
@@ -188,8 +223,18 @@ function useSimpleConversationsImpl(): ConversationsValue {
     // 若与当前一致或该会话不存在，则不处理，避免抖动
     if (conversationId === currentConversationId) return;
     if (!conversations.find(c => c.id === conversationId)) return;
-    // 切换前持久化当前会话缓存
+    // 切换前持久化当前会话缓存，并清理空会话（无消息且无缓存）
     persistFromCache(currentConversationId);
+    const currentHasCache = hasCachedMessages(currentConversationId);
+    setConversations(prev => {
+      const curr = prev.find(c => c.id === currentConversationId);
+      if (!curr) return prev;
+      const isEmpty = (!curr.messages || curr.messages.length === 0) && !currentHasCache;
+      if (!isEmpty) return prev;
+      const updated = prev.filter(c => c.id !== currentConversationId);
+      saveConversations(updated);
+      return updated;
+    });
     // eslint-disable-next-line no-console
     console.log('[Conversations] Switching from', currentConversationId, 'to', conversationId);
     setCurrentConversationId(conversationId);
@@ -253,10 +298,8 @@ function useSimpleConversationsImpl(): ConversationsValue {
     });
   };
 
-  // 清除所有对话历史
+  // 清除所有对话历史，并创建一个新的欢迎对话
   const clearAllConversations = () => {
-    setConversations([]);
-    setCurrentConversationId(null);
     if (typeof window !== 'undefined') {
       try {
         localStorage.removeItem(STORAGE_KEY);
@@ -264,6 +307,25 @@ function useSimpleConversationsImpl(): ConversationsValue {
       } catch (error) {
         console.error("Failed to clear conversations:", error);
       }
+    }
+    // 清空后立即创建新对话，确保显示欢迎界面
+    const id = `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const now = new Date();
+    const newConversation: SimpleConversation = {
+      id,
+      title: "新对话",
+      createdAt: now,
+      updatedAt: now,
+      messages: [],
+      model: undefined,
+    };
+    setConversations([newConversation]);
+    setCurrentConversationId(id);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify([newConversation]));
+        localStorage.setItem(CURRENT_CONVERSATION_KEY, id);
+      } catch {}
     }
   };
 

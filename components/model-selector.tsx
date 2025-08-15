@@ -83,18 +83,18 @@ export function ModelSelector({ settings, updateSettings }: ModelSelectorProps) 
       return;
     }
 
-    console.log('🔄 Fetching models from:', settings.baseURL + '/models');
+    console.log('🔄 Fetching models via proxy:', '/api/models');
     setLoading(true);
     setError(null);
 
     try {
-      const response = await fetch(`${settings.baseURL}/models`, {
+      const response = await fetch(`/api/models`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${settings.apiKey}`,
-          'Content-Type': 'application/json',
+          'X-API-Key': settings.apiKey,
+          'X-Base-URL': settings.baseURL,
+          'X-Title': 'SpryChat',
         },
-        mode: 'cors', // 明确指定CORS模式
       });
 
       console.log('📡 Models API response status:', response.status);

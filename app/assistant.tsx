@@ -69,14 +69,7 @@ function AssistantBody({ settings, updateSettings }: AssistantProps) {
     return saved as any[];
   }, [currentConversation?.id, currentConversation?.messages]);
 
-  // 仅当没有任何会话时才自动创建新对话，避免删除非当前/中间项时误新建
-  useEffect(() => {
-    if (!isLoaded || !isConversationsLoaded) return;
-    if (conversations.length === 0 && !currentConversation) {
-      createNewConversation(settings.model);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoaded, isConversationsLoaded, currentConversation, conversations.length]);
+  // 依赖 Provider 层的首帧新建逻辑；此处不再重复新建，避免竞态
 
   // 当切换会话时，如该会话保存了特定模型，则同步到全局设置，驱动选择器展示
   useEffect(() => {
@@ -147,11 +140,7 @@ function AssistantBody({ settings, updateSettings }: AssistantProps) {
                 </AssistantRuntimeProvider>
               )}
             />
-          ) : (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-muted-foreground">加载中...</div>
-            </div>
-          )}
+          ) : null}
         </div>
       </SidebarInset>
     </SidebarProvider>
