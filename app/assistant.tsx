@@ -13,7 +13,7 @@ import { SettingsDialog } from "@/components/settings-dialog";
 import { ModelSelector } from "@/components/model-selector";
 import { useSimpleConversations, ConversationsProvider } from "@/hooks/use-simple-conversations";
 import { ClientOnly } from "@/components/client-only";
-import { useEffect, useLayoutEffect } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import type { ReactElement } from "react";
 import { Settings, UpdateSettingsFunction } from "@/hooks/use-settings";
 
@@ -41,20 +41,68 @@ export function Assistant({ settings, updateSettings }: AssistantProps) {
 
 function AssistantBody({ settings, updateSettings }: AssistantProps) {
   const {
+    conversations,
     currentConversation,
     isLoaded: isConversationsLoaded,
     createNewConversation,
     updateConversationTitle,
+    updateConversationModel,
   } = useSimpleConversations();
   const isLoaded = isConversationsLoaded;
+  const lastSyncedFromConversation = useRef<string | null>(null); // key: `${convId}:${model}`
 
-  // 当没有当前对话时，创建一个新对话
+  // Resolve initial messages for current conversation (saved first, then cache fallback)
+  const initialMessagesResolved = useMemo(() => {
+    if (!currentConversation) return [] as any[];
+    const saved = (currentConversation.messages || []).filter((m: any) => m.role !== 'data');
+    if (saved.length > 0) return saved.filter((m: any) => m.role === 'user' || m.role === 'assistant');
+    if (typeof window === 'undefined') return saved as any[];
+    try {
+      const cachedStr = localStorage.getItem('sprychat-thread-cache-' + currentConversation.id);
+      if (cachedStr) {
+        const parsed = JSON.parse(cachedStr);
+        if (Array.isArray(parsed)) {
+          return parsed.filter((m: any) => m.role === 'user' || m.role === 'assistant');
+        }
+      }
+    } catch {}
+    return saved as any[];
+  }, [currentConversation?.id, currentConversation?.messages]);
+
+  // 仅当没有任何会话时才自动创建新对话，避免删除非当前/中间项时误新建
   useEffect(() => {
-    if (isLoaded && isConversationsLoaded && !currentConversation) {
-      createNewConversation();
+    if (!isLoaded || !isConversationsLoaded) return;
+    if (conversations.length === 0 && !currentConversation) {
+      createNewConversation(settings.model);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoaded, isConversationsLoaded, currentConversation]);
+  }, [isLoaded, isConversationsLoaded, currentConversation, conversations.length]);
+
+  // 当切换会话时，如该会话保存了特定模型，则同步到全局设置，驱动选择器展示
+  useEffect(() => {
+    if (!currentConversation) return;
+    const desired = currentConversation.model;
+    if (desired && desired !== settings.model) {
+      const key = `${currentConversation.id}:${desired}`;
+      if (lastSyncedFromConversation.current === key) return; // prevent re-entrant loop
+      // 同步全局模型为该会话模型
+      updateSettings({ model: currentConversation.model });
+      lastSyncedFromConversation.current = key;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentConversation?.id, currentConversation?.model]);
+
+  // 如果会话没有模型（老历史），首访时初始化为当前全局模型（一次性），避免后续切换不上模型
+  useEffect(() => {
+    if (!currentConversation) return;
+    if (!currentConversation.model && settings.model) {
+      updateConversationModel(currentConversation.id, settings.model);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentConversation?.id]);
+
+  // 不在这里把全局模型写回会话，以避免切换时的循环更新。
+  // 会话模型仅在用户在 ModelSelector 中显式更改时更新。
 
   // 应用主题
   useEffect(() => {
@@ -91,7 +139,8 @@ function AssistantBody({ settings, updateSettings }: AssistantProps) {
               key={currentConversation.id}
               settings={settings}
               currentConversationId={currentConversation.id}
-              initialMessages={(currentConversation.messages || []).filter((m) => m.role !== "data") as any}
+              model={currentConversation.model || settings.model}
+              initialMessages={initialMessagesResolved as any}
               render={(runtime) => (
                 <AssistantRuntimeProvider runtime={runtime}>
                   <AssistantInner currentConversation={currentConversation} updateConversationTitle={updateConversationTitle} />
@@ -112,11 +161,13 @@ function AssistantBody({ settings, updateSettings }: AssistantProps) {
 function RuntimeSection({
   settings,
   currentConversationId,
+  model,
   initialMessages,
   render,
 }: {
   settings: Settings;
   currentConversationId: string;
+  model: string;
   initialMessages: any[];
   render: (runtime: any) => ReactElement;
 }) {
@@ -127,20 +178,22 @@ function RuntimeSection({
     headers: {
       'X-API-Key': settings.apiKey,
       'X-Base-URL': settings.baseURL,
-      'X-Model': settings.model,
+      'X-Model': model,
+      'X-Title': 'SpryChat',
       // include conversation id to ensure isolation if needed server-side
       'X-Conversation-Id': currentConversationId,
     },
   });
-  // Hard reset thread synchronously to guarantee blank view for new conversations
+  // Reset thread ONLY for brand new conversations (no messages)
   useLayoutEffect(() => {
+    if (!initialMessages || initialMessages.length > 0) return;
     try {
       runtime.switchToNewThread();
       // eslint-disable-next-line no-console
-      console.log('[RuntimeSection] switched to new thread for', currentConversationId);
+      console.log('[RuntimeSection] switched to new blank thread for', currentConversationId);
     } catch (e) {
       console.warn('Failed to switch to new thread:', e);
     }
-  }, [currentConversationId]);
+  }, [currentConversationId, initialMessages?.length]);
   return render(runtime);
 }

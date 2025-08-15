@@ -12,6 +12,11 @@ export async function POST(req: Request) {
   const headerApiKey = req.headers.get('X-API-Key');
   const headerBaseURL = req.headers.get('X-Base-URL');
   const headerModel = req.headers.get('X-Model');
+  const headerTitle = req.headers.get('X-Title') || 'SpryChat';
+  const incomingReferer = req.headers.get('referer') || req.headers.get('referrer') || '';
+  const incomingOrigin = req.headers.get('origin') || '';
+  const siteUrlFallback = process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL || '';
+  const effectiveReferer = incomingReferer || siteUrlFallback || incomingOrigin;
 
   // 优先使用客户端传递的设置，然后是环境变量
   const finalApiKey = headerApiKey || process.env.OPENROUTE_API_KEY || process.env.OPENAI_API_KEY;
@@ -23,6 +28,10 @@ export async function POST(req: Request) {
     headerApiKey: headerApiKey ? '***configured***' : 'missing',
     headerBaseURL: headerBaseURL || 'using default',
     headerModel: headerModel || 'using default',
+    headerTitle,
+    incomingReferer,
+    incomingOrigin,
+    effectiveReferer,
     finalModel,
     finalBaseURL,
     hasApiKey: !!finalApiKey
@@ -49,6 +58,12 @@ export async function POST(req: Request) {
     const openroute = createOpenAI({
       apiKey: finalApiKey,
       baseURL: finalBaseURL,
+      headers: {
+        'X-Title': headerTitle,
+        // OpenRouter uses HTTP-Referer to attribute app/source
+        ...(effectiveReferer ? { 'HTTP-Referer': effectiveReferer } : {}),
+        ...(incomingOrigin ? { 'Origin': incomingOrigin } : {}),
+      },
     });
 
     const result = streamText({

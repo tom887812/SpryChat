@@ -48,6 +48,7 @@ const parseSafe = (str: string | undefined): number => {
 };
 
 import { Settings, UpdateSettingsFunction } from "@/hooks/use-settings";
+import { useSimpleConversations } from "@/hooks/use-simple-conversations";
 
 interface ModelSelectorProps {
   settings: Settings;
@@ -57,6 +58,7 @@ interface ModelSelectorProps {
 export function ModelSelector({ settings, updateSettings }: ModelSelectorProps) {
   
   const { t } = useI18n();
+  const { currentConversation, updateConversationModel } = useSimpleConversations();
   const [models, setModels] = useState<Model[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -186,7 +188,20 @@ export function ModelSelector({ settings, updateSettings }: ModelSelectorProps) 
 
   const handleModelChange = (modelId: string) => {
     if (modelId === settings.model) return;
+    if (currentConversation && currentConversation.model === modelId) return;
+    try {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('sprychat:persist-active-conversation'));
+        console.log('🛰️ Dispatched persist-active-conversation before model change');
+      }
+    } catch {}
     updateSettings({ model: modelId });
+    // 写入当前会话的模型，确保该会话记住此模型
+    if (currentConversation) {
+      try {
+        updateConversationModel(currentConversation.id, modelId);
+      } catch {}
+    }
     
     // 延迟检查设置是否真的更新了
     setTimeout(() => {

@@ -2,14 +2,13 @@
 
 import { useState, useEffect, createContext, useContext, ReactNode, createElement } from "react";
 
-import { Message } from 'ai/react';
-
 export interface SimpleConversation {
   id: string;
   title: string;
   createdAt: Date;
   updatedAt: Date;
-  messages?: Message[];
+  messages?: any[];
+  model?: string;
 }
 
 const STORAGE_KEY = "sprychat-conversations";
@@ -20,10 +19,11 @@ type ConversationsValue = {
   currentConversation: SimpleConversation | null;
   currentConversationId: string | null;
   isLoaded: boolean;
-  createNewConversation: () => string;
+  createNewConversation: (model?: string) => string;
   switchToConversation: (conversationId: string) => void;
   updateConversationTitle: (conversationId: string, title: string) => void;
-  updateConversationMessages: (conversationId: string, messages: Message[]) => void;
+  updateConversationMessages: (conversationId: string, messages: any[]) => void;
+  updateConversationModel: (conversationId: string, model: string) => void;
   deleteConversation: (conversationId: string) => void;
   clearAllConversations: () => void;
 };
@@ -93,14 +93,67 @@ function useSimpleConversationsImpl(): ConversationsValue {
     }
   };
 
+  // 更新对话使用的模型
+  const updateConversationModel = (conversationId: string, model: string) => {
+    setConversations(prev => {
+      let changed = false;
+      const updated = prev.map(conv => {
+        if (conv.id !== conversationId) return conv;
+        if (conv.model === model) return conv; // no change
+        changed = true;
+        return { ...conv, model, updatedAt: new Date() };
+      });
+      if (changed) {
+        saveConversations(updated);
+        return updated;
+      }
+      return prev;
+    });
+  };
+
+  const THREAD_CACHE_PREFIX = 'sprychat-thread-cache-';
+  const persistFromCache = (conversationId?: string | null) => {
+    if (!conversationId) return;
+    if (typeof window === 'undefined') return;
+    try {
+      const cached = localStorage.getItem(THREAD_CACHE_PREFIX + conversationId);
+      if (!cached) {
+        // eslint-disable-next-line no-console
+        console.log('[Conversations] No cache for', conversationId);
+        return;
+      }
+      const parsed = JSON.parse(cached);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        // eslint-disable-next-line no-console
+        console.log('[Conversations] Persisting from cache', conversationId, 'messages:', parsed.length);
+        // 写入对应会话消息
+        const messages = parsed as any;
+        setConversations(prev => {
+          const updated = prev.map(conv =>
+            conv.id === conversationId
+              ? { ...conv, messages, updatedAt: new Date() }
+              : conv
+          );
+          saveConversations(updated);
+          return updated;
+        });
+      } else {
+        // eslint-disable-next-line no-console
+        console.log('[Conversations] Cache empty for', conversationId);
+      }
+    } catch (e) {
+      console.warn('Failed to persist cache in hook', e);
+    }
+  };
+
     // 创建新对话
-  const createNewConversation = () => {
-    // 确保在客户端执行
+  const createNewConversation = (model?: string) => {
     if (typeof window === 'undefined') return '';
-    
-    // 使用时间戳和随机数生成唯一ID
+    // 先持久化当前会话的缓存
+    persistFromCache(currentConversationId);
+    // eslint-disable-next-line no-console
+    console.log('[Conversations] Creating new conversation, previous:', currentConversationId);
     const id = `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
     const now = new Date();
     const newConversation: SimpleConversation = {
       id,
@@ -108,42 +161,25 @@ function useSimpleConversationsImpl(): ConversationsValue {
       createdAt: now,
       updatedAt: now,
       messages: [],
+      model,
     };
 
-    // 和最新的本地存储合并，避免不同实例覆盖历史
-    let baseConversations = conversations;
-    try {
-      const stored = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null;
-      if (stored) {
-        const parsed: SimpleConversation[] = JSON.parse(stored).map((conv: any) => ({
-          ...conv,
-          createdAt: new Date(conv.createdAt),
-          updatedAt: new Date(conv.updatedAt),
-        }));
-        // 若当前内存为空，以存储为基准
-        if (baseConversations.length === 0) {
-          baseConversations = parsed;
-        }
-      }
-    } catch {}
+    setConversations(prev => {
+      const updated = [newConversation, ...prev];
+      // eslint-disable-next-line no-console
+      console.log('[Conversations] New conversation list size:', updated.length);
+      saveConversations(updated);
+      return updated;
+    });
 
-    const updatedConversations = [newConversation, ...baseConversations];
-    
-    // 立即更新状态
-    setConversations(updatedConversations);
     setCurrentConversationId(newConversation.id);
     setDidInitialSelect(true);
-    
-    // 保存到localStorage
-    saveConversations(updatedConversations);
     try {
       localStorage.setItem(CURRENT_CONVERSATION_KEY, newConversation.id);
     } catch (error) {
       console.error("Failed to save current conversation ID:", error);
     }
-
     console.log('Created new conversation:', newConversation.id);
-    
     return newConversation.id;
   };
 
@@ -152,6 +188,10 @@ function useSimpleConversationsImpl(): ConversationsValue {
     // 若与当前一致或该会话不存在，则不处理，避免抖动
     if (conversationId === currentConversationId) return;
     if (!conversations.find(c => c.id === conversationId)) return;
+    // 切换前持久化当前会话缓存
+    persistFromCache(currentConversationId);
+    // eslint-disable-next-line no-console
+    console.log('[Conversations] Switching from', currentConversationId, 'to', conversationId);
     setCurrentConversationId(conversationId);
     if (typeof window !== 'undefined') {
       try {
@@ -177,7 +217,7 @@ function useSimpleConversationsImpl(): ConversationsValue {
   };
 
   // 更新对话消息
-  const updateConversationMessages = (conversationId: string, messages: Message[]) => {
+  const updateConversationMessages = (conversationId: string, messages: any[]) => {
     setConversations(prev => {
       const updated = prev.map(conv =>
         conv.id === conversationId
@@ -241,6 +281,7 @@ function useSimpleConversationsImpl(): ConversationsValue {
     switchToConversation,
     updateConversationTitle,
     updateConversationMessages,
+    updateConversationModel,
     deleteConversation,
     clearAllConversations,
   };

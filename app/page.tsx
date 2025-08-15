@@ -9,9 +9,9 @@ export default function Home() {
   return (
     <main className="h-full w-full flex flex-col">
       {isLoaded ? (
-        // Avoid remounting Assistant when switching conversations to prevent losing history.
-        // Keep model in the key so runtime can reinitialize when model changes.
-        <Assistant key={`${settings.model}`} settings={settings} updateSettings={updateSettings} />
+        // Avoid remounting Assistant when switching conversations or changing model to prevent state loss.
+        // Runtime reinitialization on model change is handled inside Assistant's RuntimeSection.
+        <Assistant settings={settings} updateSettings={updateSettings} />
       ) : (
         <div>Loading...</div>
       )}
