@@ -47,7 +47,7 @@ npm run dev
 
 ### 4. Access Application
 
-Open [http://localhost:3001](http://localhost:3001) to start using SpryChat
+Open [http://localhost:3000](http://localhost:3000) to start using SpryChat
 
 ## ⚙️ Configuration
 

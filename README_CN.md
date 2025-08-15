@@ -47,7 +47,7 @@ npm run dev
 
 ### 4. 访问应用
 
-打开 [http://localhost:3001](http://localhost:3001) 开始使用SpryChat
+打开 [http://localhost:3000](http://localhost:3000) 开始使用SpryChat
 
 ## ⚙️ 配置说明
 
