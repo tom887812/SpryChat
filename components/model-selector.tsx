@@ -120,10 +120,19 @@ export function ModelSelector() {
   const [error, setError] = useState<string | null>(globalFetchState.error);
   const mountedRef = useRef(false);
 
+  // Create a ref to always get the latest settings
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
+
   // Simple fetch function that updates global state
   const fetchModels = useCallback(async () => {
-    const apiKey = settings.apiKey;
-    const baseURL = settings.baseURL;
+    // Always get fresh settings values from ref
+    const currentSettings = settingsRef.current;
+    const apiKey = currentSettings.apiKey;
+    const baseURL = currentSettings.baseURL;
+    
+    // eslint-disable-next-line no-console
+    console.log('[ModelSelector] fetchModels using apiKey:', apiKey?.substring(0, 8) + '...', 'baseURL:', baseURL);
     
     if (!apiKey || !baseURL) {
       globalFetchState = { inFlight: false, lastFetch: 0, models: [], error: null, loading: false };
@@ -192,7 +201,6 @@ export function ModelSelector() {
       globalFetchState.inFlight = false;
       setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Mount effect - only run once per component instance
@@ -218,7 +226,13 @@ export function ModelSelector() {
     const handler = () => {
       // eslint-disable-next-line no-console
       console.log('[ModelSelector] settings-saved event received');
-      fetchModels();
+      // Reset global fetch state to allow immediate fetch with new settings
+      globalFetchState.inFlight = false;
+      globalFetchState.lastFetch = 0;
+      // Force re-read current settings and fetch
+      setTimeout(() => {
+        fetchModels();
+      }, 50);
     };
     
     if (typeof window !== 'undefined') {
@@ -266,7 +280,7 @@ export function ModelSelector() {
       onValueChange={handleModelChange}
       disabled={loading || modelGroups.length === 0}
     >
-      <SelectTrigger className="w-[200px]">
+      <SelectTrigger className="w-[300px]">
         <SelectValue placeholder={loading ? t('loading') : t('selectModel')} />
       </SelectTrigger>
       <SelectContent>

@@ -44,13 +44,20 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
   };
 
   const handleSave = () => {
+    console.log('[SettingsDialog] Saving settings - apiKey:', tempSettings.apiKey?.substring(0, 8) + '...', 'baseURL:', tempSettings.baseURL);
     updateSettings(tempSettings);
-    // Notify listeners (e.g., ModelSelector) to refresh derived data once
-    try {
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('sprychat:settings-saved'));
-      }
-    } catch {}
+    
+    // Small delay to ensure settings are updated before notifying
+    setTimeout(() => {
+      // Notify listeners (e.g., ModelSelector) to refresh derived data once
+      try {
+        if (typeof window !== 'undefined') {
+          console.log('[SettingsDialog] Dispatching settings-saved event');
+          window.dispatchEvent(new Event('sprychat:settings-saved'));
+        }
+      } catch {}
+    }, 100);
+    
     setOpen(false);
   };
 

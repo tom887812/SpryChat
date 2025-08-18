@@ -54,11 +54,14 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateSettings = useCallback((newSettings: Partial<Settings>) => {
+    console.log('[useSettings] Updating settings - apiKey:', newSettings.apiKey?.substring(0, 8) + '...', 'baseURL:', newSettings.baseURL);
     setSettings(prevSettings => {
       const updated = { ...prevSettings, ...newSettings };
+      console.log('[useSettings] New settings state - apiKey:', updated.apiKey?.substring(0, 8) + '...', 'baseURL:', updated.baseURL);
       if (typeof window !== 'undefined') {
         try {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+          console.log('[useSettings] Settings saved to localStorage');
         } catch (error) {
           console.error("Failed to save settings:", error);
         }
