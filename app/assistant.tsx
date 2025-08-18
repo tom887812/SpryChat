@@ -15,15 +15,9 @@ import { useSimpleConversations, ConversationsProvider } from "@/hooks/use-simpl
 import { ClientOnly } from "@/components/client-only";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import type { ReactElement } from "react";
-import { Settings, UpdateSettingsFunction } from "@/hooks/use-settings";
+import { SettingsProvider, useSettings, Settings, UpdateSettingsFunction } from "@/hooks/use-settings.tsx";
 
-interface AssistantProps {
-  settings: Settings;
-  updateSettings: UpdateSettingsFunction;
-}
-
-export function Assistant({ settings, updateSettings }: AssistantProps) {
-  // Top-level provider wrapper to ensure context is available before any hook usage
+export function Assistant() {
   return (
     <ClientOnly
       fallback={
@@ -33,13 +27,14 @@ export function Assistant({ settings, updateSettings }: AssistantProps) {
       }
     >
       <ConversationsProvider>
-        <AssistantBody settings={settings} updateSettings={updateSettings} />
+        <AssistantBody />
       </ConversationsProvider>
     </ClientOnly>
   );
 }
 
-function AssistantBody({ settings, updateSettings }: AssistantProps) {
+function AssistantBody() {
+  const { settings, updateSettings, isLoaded: isSettingsLoaded } = useSettings();
   const {
     conversations,
     currentConversation,
@@ -48,7 +43,7 @@ function AssistantBody({ settings, updateSettings }: AssistantProps) {
     updateConversationTitle,
     updateConversationModel,
   } = useSimpleConversations();
-  const isLoaded = isConversationsLoaded;
+  const isLoaded = isConversationsLoaded && isSettingsLoaded;
   const lastSyncedFromConversation = useRef<string | null>(null); // key: `${convId}:${model}`
 
   // Resolve initial messages for current conversation (saved first, then cache fallback)
@@ -71,19 +66,8 @@ function AssistantBody({ settings, updateSettings }: AssistantProps) {
 
   // 依赖 Provider 层的首帧新建逻辑；此处不再重复新建，避免竞态
 
-  // 当切换会话时，如该会话保存了特定模型，则同步到全局设置，驱动选择器展示
-  useEffect(() => {
-    if (!currentConversation) return;
-    const desired = currentConversation.model;
-    if (desired && desired !== settings.model) {
-      const key = `${currentConversation.id}:${desired}`;
-      if (lastSyncedFromConversation.current === key) return; // prevent re-entrant loop
-      // 同步全局模型为该会话模型
-      updateSettings({ model: currentConversation.model });
-      lastSyncedFromConversation.current = key;
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentConversation?.id, currentConversation?.model]);
+  // 当切换会话时，该会话的模型将用于API请求，但不再同步回全局设置以避免循环。
+  // 全局模型由 ModelSelector 控制。
 
   // 如果会话没有模型（老历史），首访时初始化为当前全局模型（一次性），避免后续切换不上模型
   useEffect(() => {
@@ -120,7 +104,7 @@ function AssistantBody({ settings, updateSettings }: AssistantProps) {
           <div className="flex items-center gap-2 px-4">
             <SidebarTrigger className="-ml-1" />
             <Separator orientation="vertical" className="mr-2 h-4" />
-            <ModelSelector settings={settings} updateSettings={updateSettings} />
+            <ModelSelector />
           </div>
           <div className="ml-auto px-4">
             <SettingsDialog />
@@ -130,7 +114,6 @@ function AssistantBody({ settings, updateSettings }: AssistantProps) {
           {isLoaded && currentConversation ? (
             <RuntimeSection
               key={currentConversation.id}
-              settings={settings}
               currentConversationId={currentConversation.id}
               model={currentConversation.model || settings.model}
               initialMessages={initialMessagesResolved as any}
@@ -148,18 +131,17 @@ function AssistantBody({ settings, updateSettings }: AssistantProps) {
 }
 
 function RuntimeSection({
-  settings,
   currentConversationId,
   model,
   initialMessages,
   render,
 }: {
-  settings: Settings;
   currentConversationId: string;
   model: string;
   initialMessages: any[];
   render: (runtime: any) => ReactElement;
 }) {
+  const { settings } = useSettings();
   // Create a fresh runtime for each conversation via key on parent
   const runtime = useChatRuntime({
     initialMessages,

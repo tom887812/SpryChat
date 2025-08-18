@@ -21,7 +21,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Settings as SettingsIcon, RotateCcw } from "lucide-react";
-import { useSettings, type Settings } from "@/hooks/use-settings";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useSettings, type Settings } from "@/hooks/use-settings.tsx";
 import { useI18n } from "@/hooks/use-i18n";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -44,6 +45,12 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
 
   const handleSave = () => {
     updateSettings(tempSettings);
+    // Notify listeners (e.g., ModelSelector) to refresh derived data once
+    try {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('sprychat:settings-saved'));
+      }
+    } catch {}
     setOpen(false);
   };
 
@@ -55,10 +62,11 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
       model: "gpt-4o",
       language: "zh",
       theme: "light",
+      showAllModels: false,
     });
   };
 
-  const updateTempSettings = (key: keyof Settings, value: string) => {
+  const updateTempSettings = (key: keyof Settings, value: string | boolean) => {
     setTempSettings(prev => ({ ...prev, [key]: value }));
   };
 
@@ -120,6 +128,22 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
                 {t('modelListNote')}
               </p>
             </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="showAllModels"
+                  checked={tempSettings.showAllModels}
+                  onCheckedChange={(checked) => updateTempSettings("showAllModels", checked as boolean)}
+                />
+                <Label htmlFor="showAllModels" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                  显示所有模型
+                </Label>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                默认只显示免费模型，开启后显示所有可用模型（包括收费模型）
+              </p>
+            </div>
           </TabsContent>
 
           <TabsContent value="appearance" className="space-y-4 min-h-[300px]">
@@ -161,7 +185,7 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
               <div>
                 <Label className="text-sm font-medium">{t('version')}</Label>
                 <div className="text-sm text-muted-foreground mt-1">
-                  SpryChat v1.0.0
+                  SpryChat v1.0.1
                 </div>
               </div>
               

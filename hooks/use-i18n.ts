@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback } from "react";
 import { useSettings } from "./use-settings";
 
 // 多语言文本定义
@@ -117,9 +118,9 @@ export type TranslationKey = keyof typeof translations.zh;
 export function useI18n() {
   const { settings } = useSettings();
   
-  const t = (key: TranslationKey): string => {
+  const t = useCallback((key: TranslationKey): string => {
     return translations[settings.language]?.[key] || translations.zh[key] || key;
-  };
+  }, [settings.language]);
   
   return { t, language: settings.language };
 }

@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Disable React Strict Mode to prevent double mounting in development
+  reactStrictMode: false,
   // Disable ESLint during production builds to avoid blocking deploys due to lint errors.
   // Local development will still show lint issues via your editor/CLI.
   eslint: {

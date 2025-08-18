@@ -5,6 +5,42 @@ import { streamText } from "ai";
 export const runtime = "edge";
 export const maxDuration = 30;
 
+// 模型分类逻辑（与前端保持一致）
+const getModelCategory = (modelId: string) => {
+  const id = modelId.toLowerCase();
+  
+  if (id.includes('dall-e') || id.includes('midjourney') || id.includes('stable-diffusion') ||
+      id.includes('flux') || id.includes('imagen') || id.includes('firefly') || id.includes('playground')) {
+    const isEdit = id.includes('edit') || id.includes('inpaint') || id.includes('outpaint');
+    return {
+      category: 'images',
+      subcategory: isEdit ? 'edits' : 'generations',
+      endpoint: isEdit ? '/images/edits' : '/images/generations'
+    };
+  }
+  
+  if (id.includes('whisper') || id.includes('tts') || id.includes('speech') || 
+      id.includes('audio') || id.includes('voice')) {
+    return {
+      category: 'audio',
+      endpoint: id.includes('tts') || id.includes('speech') ? '/audio/speech' : '/audio/transcriptions'
+    };
+  }
+  
+  if (id.includes('sora') || id.includes('runway') || id.includes('pika') ||
+      id.includes('video') || id.includes('gen-2') || id.includes('gen-3')) {
+    return {
+      category: 'videos',
+      endpoint: '/videos/generations'
+    };
+  }
+  
+  return {
+    category: 'chat',
+    endpoint: '/chat/completions'
+  };
+};
+
 export async function POST(req: Request) {
   const { messages, system, tools } = await req.json();
 
@@ -23,6 +59,9 @@ export async function POST(req: Request) {
   const finalBaseURL = headerBaseURL || process.env.OPENROUTE_BASE_URL || "https://api.openai.com/v1";
   const finalModel = headerModel || process.env.OPENROUTE_MODEL || "gpt-4o";
 
+  // 获取模型类别和对应的端点
+  const modelInfo = getModelCategory(finalModel);
+
   // 调试日志
   console.log('🚀 API Request Debug:', {
     headerApiKey: headerApiKey ? '***configured***' : 'missing',
@@ -34,7 +73,9 @@ export async function POST(req: Request) {
     effectiveReferer,
     finalModel,
     finalBaseURL,
-    hasApiKey: !!finalApiKey
+    hasApiKey: !!finalApiKey,
+    modelCategory: modelInfo.category,
+    modelEndpoint: modelInfo.endpoint
   });
   
   // 额外调试：检查所有headers
@@ -54,6 +95,19 @@ export async function POST(req: Request) {
   }
 
   try {
+    // 对于非聊天模型，返回不支持的错误信息
+    if (modelInfo.category !== 'chat') {
+      return new Response(
+        JSON.stringify({ 
+          error: `${modelInfo.category} 模型暂不支持聊天功能`,
+          modelCategory: modelInfo.category,
+          suggestedEndpoint: modelInfo.endpoint,
+          message: `此模型属于 ${modelInfo.category} 类别，需要使用专门的 ${modelInfo.endpoint} 端点`
+        }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
     // 创建OpenRoute提供商实例
     const openroute = createOpenAI({
       apiKey: finalApiKey,

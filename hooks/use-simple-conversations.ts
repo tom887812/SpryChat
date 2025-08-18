@@ -298,8 +298,10 @@ function useSimpleConversationsImpl(): ConversationsValue {
     });
   };
 
-  // 清除所有对话历史，并创建一个新的欢迎对话
+  // 清除所有对话历史
   const clearAllConversations = () => {
+    setConversations([]);
+    setCurrentConversationId(null);
     if (typeof window !== 'undefined') {
       try {
         localStorage.removeItem(STORAGE_KEY);
@@ -307,25 +309,6 @@ function useSimpleConversationsImpl(): ConversationsValue {
       } catch (error) {
         console.error("Failed to clear conversations:", error);
       }
-    }
-    // 清空后立即创建新对话，确保显示欢迎界面
-    const id = `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const now = new Date();
-    const newConversation: SimpleConversation = {
-      id,
-      title: "新对话",
-      createdAt: now,
-      updatedAt: now,
-      messages: [],
-      model: undefined,
-    };
-    setConversations([newConversation]);
-    setCurrentConversationId(id);
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify([newConversation]));
-        localStorage.setItem(CURRENT_CONVERSATION_KEY, id);
-      } catch {}
     }
   };
 
