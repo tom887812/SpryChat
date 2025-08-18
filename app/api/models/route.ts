@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 export async function GET(req: Request) {
   // Read configuration from headers
@@ -24,6 +24,8 @@ export async function GET(req: Request) {
 
   try {
     console.log('[Models API] Fetching', url, 'with baseURL:', finalBaseURL);
+    const startTime = Date.now();
+    
     const resp = await fetch(url, {
       method: 'GET',
       headers: {
@@ -33,7 +35,12 @@ export async function GET(req: Request) {
         ...(effectiveReferer ? { 'HTTP-Referer': effectiveReferer, 'Referer': effectiveReferer } : {}),
         ...(incomingOrigin ? { 'Origin': incomingOrigin } : {}),
       },
+      // Add timeout and connection optimizations
+      signal: AbortSignal.timeout(45000), // 45 second timeout
     });
+
+    const fetchTime = Date.now() - startTime;
+    console.log(`[Models API] Fetch completed in ${fetchTime}ms`);
 
     if (!resp.ok) {
       const text = await resp.text();
