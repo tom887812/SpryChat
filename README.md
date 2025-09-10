@@ -196,6 +196,8 @@ npm start
 - 🌐 Multi-language and theme switching support
 - 📁 Integrated file upload functionality
 
+## [![DeepWiki Index](https://deepwiki.com/badge.svg)](https://deepwiki.com/{org}/{repo})
+
 ## 📄 License
 
 MIT License
