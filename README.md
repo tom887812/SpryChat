@@ -2,7 +2,7 @@
 
 A modern AI chat assistant with multi-model support, conversation history, and rich customization features.
 
-[中文文档](./README_CN.md) | [English](./README.md)
+[中文文档](./README_CN.md) | [English](./README.md) | [![DeepWiki Index](https://deepwiki.com/badge.svg)](https://deepwiki.com/tom887812/SpryChat)
 
 ## ✨ Key Features
 
@@ -195,8 +195,6 @@ npm start
 - ⚙️ Added client-side settings interface
 - 🌐 Multi-language and theme switching support
 - 📁 Integrated file upload functionality
-
-## [![DeepWiki Index](https://deepwiki.com/badge.svg)](https://deepwiki.com/{org}/{repo})
 
 ## 📄 License
 
